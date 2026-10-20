@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<title>Águia Cast WebDJ Studio</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header class="bar">
+  <div class="brand"><div class="brand-icon">A<span>◖</span></div><div><strong>ÁGUIA CAST</strong><small>WEBDJ STUDIO <span>V1.0</span></small></div></div>
+  <nav aria-label="Menu principal">
+    <button type="button" data-acao="inicio" class="active">⌂ <span>Meus DJs</span></button>
+    <button type="button" data-acao="radio">♫ <span>WebDJs do painel</span></button>
+    <button type="button" data-acao="painel">▣ <span>Painel</span></button>
+    <button type="button" data-acao="voltar">‹ <span>Voltar</span></button>
+    <button type="button" data-acao="atualizar">↻ <span>Atualizar</span></button>
+  </nav>
+  <div class="right"><span class="indicator" id="indicador" aria-hidden="true"></span><span id="estado" role="status" aria-live="polite">Iniciando…</span><button type="button" data-acao="sair" class="logout">Sair</button></div>
+</header>
+<script src="app.js"></script>
+</body></html>

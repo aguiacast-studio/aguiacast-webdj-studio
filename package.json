@@ -1,0 +1,41 @@
+{
+  "name": "aguiacast-webdj-studio",
+  "version": "1.0.0",
+  "description": "Águia Cast WebDJ Studio para Windows — primeira fase",
+  "author": "Águia Cast",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/ui/app.js",
+    "dist:win": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.9.1",
+    "electron-builder": "26.0.0"
+  },
+  "build": {
+    "appId": "com.aguiacast.webdjstudio",
+    "productName": "Águia Cast WebDJ Studio",
+    "copyright": "Copyright © Águia Cast",
+    "asar": true,
+    "compression": "normal",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "directories": { "output": "dist" },
+    "win": { "target": ["nsis"], "icon": "assets/icon.ico", "artifactName": "AGUIACAST_WEBDJ_STUDIO_${version}_SETUP.${ext}" },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Águia Cast WebDJ Studio",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}
