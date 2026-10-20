@@ -1,0 +1,41 @@
+name: Gerar instalador Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'package.json'
+      - '.github/workflows/gerar-exe-windows.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - name: Buscar codigo
+        uses: actions/checkout@v4
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+      - name: Validar Javascript
+        run: npm run check
+      - name: Compilar instalador EXE
+        run: npm run dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Publicar instalador para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: AGUIACAST_WEBDJ_STUDIO_WINDOWS_V1_0
+          path: dist/*.exe
+          if-no-files-found: error
+          retention-days: 30
