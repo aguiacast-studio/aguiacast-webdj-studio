@@ -3,9 +3,9 @@ const path = require('node:path');
 const { app, BrowserWindow, WebContentsView, ipcMain, session, dialog, powerSaveBlocker } = require('electron');
 
 const ORIGIN = 'https://aguiacast.com';
-const HOME = `${ORIGIN}/webdj-studio.php`;
+const HOME = `${ORIGIN}/webdj-studio`;
 const PANEL = `${ORIGIN}/dashboard`;
-const RADIO = `${ORIGIN}/gerenciar-webdjs.php`;
+const RADIO = `${ORIGIN}/gerenciar-webdjs`;
 const LOGIN = `${ORIGIN}/login`;
 const LOGOUT = `${ORIGIN}/sair`;
 const TOP = 80;
@@ -98,7 +98,17 @@ function iniciar() {
   pagina.webContents.on('did-stop-loading', () => {
     gerirSuspensao();
     const u = pagina.webContents.getURL();
-    estado(estaNoWebDJ(u) ? 'Estúdio WebDJ aberto · transmissão depende da conexão' : 'Conectado ao painel Águia Cast', 'ok');
+    let endereco;
+    try { endereco = new URL(u); } catch (_) { return; }
+    if (/^\/login(?:\.php)?\/?$/i.test(endereco.pathname)) {
+      estado('Faça login com a porta e a senha da streaming.', 'neutro');
+    } else if (estaNoWebDJ(u)) {
+      estado('Estúdio WebDJ aberto · confirme a conexão antes de transmitir.', 'ok');
+    } else if (endereco.origin === ORIGIN) {
+      estado('Área do painel Águia Cast aberta.', 'ok');
+    } else {
+      estado('Página não reconhecida.', 'erro');
+    }
   });
   pagina.webContents.on('did-fail-load', (_ev, erro, desc, url, isMainFrame) => {
     if (isMainFrame && erro !== -3) estado(`Não foi possível abrir o painel (${erro}).`, 'erro');
