@@ -5,3 +5,8 @@
 nav button{font-size:13px;padding:11px 14px}
 #estado{max-width:290px}
 @media(max-width:980px){.brand{min-width:175px}.right{gap:5px}#estado{max-width:145px}nav button{padding:9px}}
+
+/* V1.5 — marca do servidor; a logo da revenda permanece nas páginas WebDJ. */
+.brand-icon{overflow:hidden;background:#171d27;padding:1px}
+.brand-icon img{width:100%;height:100%;object-fit:contain;border-radius:11px}
+@media(max-width:1150px){.brand{min-width:180px}.bar{gap:10px}}

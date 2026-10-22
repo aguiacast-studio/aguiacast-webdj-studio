@@ -8,6 +8,7 @@ function classificarDestino(valor) {
     if (u.origin !== ORIGIN || u.username || u.password) return 'negado';
     const p = u.pathname.replace(/\/+$/, '') || '/';
     if (/^\/webdj\/[^/]+$/i.test(p) || p === '/webdj-studio' || p === '/webdj-studio.php') return 'studio';
+    if (p === '/gerenciar-djs' || p === '/gerenciar-djs.php') return 'djs';
     if (/^\/(?:login|login\.php|sair|login-autentica-revenda(?:\.php)?|login-autentica-streaming(?:\.php)?|login-autentica(?:\.php)?)$/i.test(p)) return 'login';
     if (p === '/dashboard' || p === '/dashboard.php' || p === '/gerenciar-webdjs' || p === '/gerenciar-webdjs.php') return 'inicio';
     return 'negado';

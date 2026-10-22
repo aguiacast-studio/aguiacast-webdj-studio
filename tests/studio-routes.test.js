@@ -8,7 +8,7 @@ for(const path of ['/login','/login.php','/login-autentica-revenda','/login-aute
   assert.equal(classificarDestino(host+path),'login',path);
 for(const path of ['/dashboard','/dashboard.php','/gerenciar-webdjs'])
   assert.equal(classificarDestino(host+path),'inicio',path);
-for(const path of ['/admin/login','/gerenciar-djs','/webdj','/webdj/x/y','/settings','/','/webdj/'])
+for(const path of ['/admin/login','/webdj','/webdj/x/y','/settings','/','/webdj/'])
   assert.equal(classificarDestino(host+path),'negado',path);
 for(const bad of ['https://evil.test/webdj/x','http://aguiacast.com/login', 'https://aguiacast.com.evil.test/login','nonsense'])
   assert.equal(classificarDestino(bad),'negado',bad);
@@ -16,3 +16,6 @@ assert.equal(destinoPrincipal(host+'/dashboard'),host+'/webdj-studio');
 assert.equal(destinoPrincipal(host+'/dashboard.php?foo=1'),host+'/webdj-studio');
 assert.equal(destinoPrincipal(host+'/webdj/FOO'),null);
 console.log('OK: verificadas rotas permitidas, recusadas e redirecionamento pos-login');
+
+assert.equal(classificarDestino('https://aguiacast.com/gerenciar-djs'), 'djs');
+assert.equal(classificarDestino('https://aguiacast.com/gerenciar-djs.php'), 'djs');

@@ -1,11 +1,11 @@
 'use strict';
 const path = require('node:path');
-const { prepararUrlAudioLab } = require('./audio-lab-url');
 const { classificarDestino, destinoPrincipal } = require('./studio-routes');
 const { app, BrowserWindow, WebContentsView, ipcMain, session, dialog, powerSaveBlocker } = require('electron');
 
 const ORIGIN = 'https://aguiacast.com';
 const HOME = `${ORIGIN}/webdj-studio`;
+const DJS = `${ORIGIN}/gerenciar-djs`;
 const LOGIN = `${ORIGIN}/login`;
 const LOGOUT = `${ORIGIN}/sair`;
 const TOP = 76;
@@ -36,18 +36,28 @@ function gerirSuspensao() {
     powerSaveBlocker.stop(suspensao); suspensao = null;
   }
 }
-function confirmarSaidaEstudio() {
+async function confirmarSaidaEstudio() {
   if (!pagina || !estaNoWebDJ(pagina.webContents.getURL())) return true;
+  // Só apresenta alerta quando o WebDJ realmente iniciou transmissão.
+  // Se o estado não puder ser lido, opta por avisar para não cortar o áudio.
+  let transmitindo = true;
+  try {
+    transmitindo = await pagina.webContents.executeJavaScript(
+      'Boolean(window.Webcaster && Webcaster.views && Webcaster.views.settings && Webcaster.views.settings.model && Webcaster.views.settings.model.get("streaming"))',
+      true
+    );
+  } catch (_) { /* manter aviso conservador */ }
+  if (!transmitindo) return true;
   return dialog.showMessageBoxSync(janela, {
-    type: 'warning', buttons: ['Permanecer no estúdio', 'Sair do estúdio'], defaultId: 0, cancelId: 0,
-    title: 'Transmissão ao vivo',
-    message: 'Você pode estar transmitindo ao vivo.',
-    detail: 'Sair do estúdio ou fechar o aplicativo pode interromper sua transmissão. Deseja continuar?'
+    type: 'warning', buttons: ['Continuar transmitindo', 'Encerrar e sair'], defaultId: 0, cancelId: 0,
+    title: 'Transmissão em andamento',
+    message: 'Você está transmitindo ao vivo.',
+    detail: 'Sair agora pode interromper a programação da rádio. Desconecte o WebDJ primeiro para encerrar com segurança.'
   }) === 1;
 }
 async function navegar(destino, exigeConfirmacao = true) {
   if (!pagina || !urlConfiavel(destino)) return false;
-  if (exigeConfirmacao && !confirmarSaidaEstudio()) return false;
+  if (exigeConfirmacao && !(await confirmarSaidaEstudio())) return false;
   try { await pagina.webContents.loadURL(destino); return true; }
   catch (_) { estado('Falha ao carregar o Studio. Verifique sua internet.', 'erro'); return false; }
 }
@@ -77,8 +87,13 @@ function iniciar() {
   janela.on('resize', ajustar);
   janela.on('close', (ev) => {
     if (fechando) return;
-    if (!confirmarSaidaEstudio()) ev.preventDefault();
-    else fechando = true;
+    ev.preventDefault();
+    confirmarSaidaEstudio().then((autorizado) => {
+      if (autorizado && janela && !janela.isDestroyed()) {
+        fechando = true;
+        janela.close();
+      }
+    }).catch(() => estado('Não foi possível confirmar a saída do estúdio.', 'atencao'));
   });
   janela.on('closed', () => {
     if (suspensao !== null) { powerSaveBlocker.stop(suspensao); suspensao = null; }
@@ -87,7 +102,7 @@ function iniciar() {
   janela.once('ready-to-show', () => janela && janela.show());
   pagina.webContents.setWindowOpenHandler(({ url }) => {
     const destino = classificarDestino(url);
-    if (destino === 'studio' || destino === 'login') {
+    if (destino === 'studio' || destino === 'login' || destino === 'djs') {
       navegar(url);
     } else if (destino === 'inicio') {
       navegar(HOME);
@@ -98,7 +113,10 @@ function iniciar() {
   });
   pagina.webContents.on('will-navigate', (evento, url) => {
     const destino = classificarDestino(url);
-    if (destino === 'negado') {
+    if (estaNoWebDJ(pagina.webContents.getURL()) && (destino === 'djs' || destino === 'login')) {
+      evento.preventDefault();
+      navegar(url);
+    } else if (destino === 'negado') {
       evento.preventDefault();
       estado('Área do painel bloqueada no aplicativo. Use o navegador para administrar a rádio.', 'atencao');
     } else if (destino === 'inicio') {
@@ -115,11 +133,13 @@ function iniciar() {
     if (/^\/login(?:\.php)?\/?$/i.test(endereco.pathname)) {
       estado('Faça login com a porta e a senha da streaming.', 'neutro');
     } else if (estaNoWebDJ(u)) {
-      const labAtivo = endereco.searchParams.get('agc_audio_lab') === '1';
+      const labAtivo = endereco.searchParams.get('agc_audio_lab') !== '0';
       estado(labAtivo
-        ? 'Águia Audio Lab ativo · confirme a conexão antes de transmitir.'
+        ? 'Motor de áudio V1.5 ativo · transmissão com mixagem aprimorada.'
         : 'WebDJ clássico aberto · Audio Lab não identificado nesta página.',
         labAtivo ? 'ok' : 'atencao');
+    } else if (endereco.pathname === '/gerenciar-djs' || endereco.pathname === '/gerenciar-djs.php') {
+      estado('Gerenciador de DJs conectado ao cadastro da VPS.', 'ok');
     } else if (endereco.origin === ORIGIN) {
       estado('Central de DJs pronta para abrir seu estúdio.', 'ok');
     } else {
@@ -139,7 +159,7 @@ else {
   });
   app.whenReady().then(() => {
     const sessao = session.fromPartition('persist:aguiacast-webdj');
-    // Audio Lab e uma melhoria experimental do PHP instalada na VPS (WebDJ V1.3.1).
+    // Na V1.5 o Audio Lab aprovado fica ativado por padrão na VPS.
     // Aplica somente a navegacoes completas do estudio, nao interfere em
     // login, dashboard, recursos de audio, cookies ou WebSockets.
     // O login do painel pode redirecionar primeiro a /dashboard.
@@ -156,8 +176,8 @@ else {
         callback({ redirectURL: principal || HOME });
         return;
       }
-      const novaUrl = prepararUrlAudioLab(detalhes.url);
-      callback(novaUrl ? { redirectURL: novaUrl } : {});
+      // V1.5 VPS liga o motor de áudio por padrão (sem parâmetro na URL).
+      callback({});
     });
     const autorizaMicrofone = (url, tipo, detalhes = {}) => {
       if (tipo !== 'media' || !estaNoWebDJ(url)) return false;
@@ -178,6 +198,7 @@ else {
     ipcMain.handle('agc:acao', async (_ev, acao) => {
       if (!pagina || !janela) return false;
       if (acao === 'inicio') return navegar(HOME);
+      if (acao === 'djs') return navegar(DJS);
       if (acao === 'sair') return navegar(LOGOUT);
       if (acao === 'voltar') return navegar(HOME);
       if (acao === 'atualizar') { pagina.webContents.reloadIgnoringCache(); return true; }
