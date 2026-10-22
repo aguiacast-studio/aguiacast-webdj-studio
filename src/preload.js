@@ -1,6 +1,6 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
-const ACTIONS = new Set(['inicio', 'painel', 'radio', 'voltar', 'atualizar', 'sair']);
+const ACTIONS = new Set(['inicio', 'voltar', 'atualizar', 'sair']);
 contextBridge.exposeInMainWorld('agc', Object.freeze({
   acao: (nome) => {
     if (typeof nome !== 'string' || !ACTIONS.has(nome)) return Promise.resolve(false);

@@ -1,15 +1,14 @@
 'use strict';
 const path = require('node:path');
 const { prepararUrlAudioLab } = require('./audio-lab-url');
+const { classificarDestino, destinoPrincipal } = require('./studio-routes');
 const { app, BrowserWindow, WebContentsView, ipcMain, session, dialog, powerSaveBlocker } = require('electron');
 
 const ORIGIN = 'https://aguiacast.com';
 const HOME = `${ORIGIN}/webdj-studio`;
-const PANEL = `${ORIGIN}/dashboard`;
-const RADIO = `${ORIGIN}/gerenciar-webdjs`;
 const LOGIN = `${ORIGIN}/login`;
 const LOGOUT = `${ORIGIN}/sair`;
-const TOP = 80;
+const TOP = 76;
 let janela = null;
 let pagina = null;
 let suspensao = null;
@@ -50,7 +49,7 @@ async function navegar(destino, exigeConfirmacao = true) {
   if (!pagina || !urlConfiavel(destino)) return false;
   if (exigeConfirmacao && !confirmarSaidaEstudio()) return false;
   try { await pagina.webContents.loadURL(destino); return true; }
-  catch (_) { estado('Falha na conexão com o painel. Verifique sua internet.', 'erro'); return false; }
+  catch (_) { estado('Falha ao carregar o Studio. Verifique sua internet.', 'erro'); return false; }
 }
 function ajustar() {
   if (!janela || !pagina || janela.isDestroyed()) return;
@@ -59,7 +58,7 @@ function ajustar() {
 }
 function iniciar() {
   janela = new BrowserWindow({
-    width: 1360, height: 900, minWidth: 920, minHeight: 630, show: false,
+    width: 1360, height: 900, minWidth: 880, minHeight: 620, show: false,
     title: 'Águia Cast WebDJ Studio', backgroundColor: '#0b0e15',
     icon: path.join(__dirname, '../assets/icon.ico'),
     autoHideMenuBar: true,
@@ -87,15 +86,27 @@ function iniciar() {
   });
   janela.once('ready-to-show', () => janela && janela.show());
   pagina.webContents.setWindowOpenHandler(({ url }) => {
-    // Links do painel são abertos no aplicativo. Links externos só por ação explícita do usuário.
-    if (urlConfiavel(url)) { navegar(url); }
-    // Links externos bloqueados; não entregar URLs de páginas remotas ao sistema operacional.
+    const destino = classificarDestino(url);
+    if (destino === 'studio' || destino === 'login') {
+      navegar(url);
+    } else if (destino === 'inicio') {
+      navegar(HOME);
+    } else {
+      estado('Neste aplicativo, apenas os DJs e o Studio estão disponíveis.', 'atencao');
+    }
     return { action: 'deny' };
   });
   pagina.webContents.on('will-navigate', (evento, url) => {
-    if (!urlConfiavel(url)) { evento.preventDefault(); estado('Navegação externa bloqueada no estúdio.', 'atencao'); }
+    const destino = classificarDestino(url);
+    if (destino === 'negado') {
+      evento.preventDefault();
+      estado('Área do painel bloqueada no aplicativo. Use o navegador para administrar a rádio.', 'atencao');
+    } else if (destino === 'inicio') {
+      evento.preventDefault();
+      navegar(HOME);
+    }
   });
-  pagina.webContents.on('did-start-loading', () => estado('Carregando painel…'));
+  pagina.webContents.on('did-start-loading', () => estado('Abrindo Águia Cast Studio…'));
   pagina.webContents.on('did-stop-loading', () => {
     gerirSuspensao();
     const u = pagina.webContents.getURL();
@@ -110,13 +121,13 @@ function iniciar() {
         : 'WebDJ clássico aberto · Audio Lab não identificado nesta página.',
         labAtivo ? 'ok' : 'atencao');
     } else if (endereco.origin === ORIGIN) {
-      estado('Área do painel Águia Cast aberta.', 'ok');
+      estado('Central de DJs pronta para abrir seu estúdio.', 'ok');
     } else {
       estado('Página não reconhecida.', 'erro');
     }
   });
   pagina.webContents.on('did-fail-load', (_ev, erro, desc, url, isMainFrame) => {
-    if (isMainFrame && erro !== -3) estado(`Não foi possível abrir o painel (${erro}).`, 'erro');
+    if (isMainFrame && erro !== -3) estado(`Não foi possível abrir o Studio (${erro}).`, 'erro');
   });
   pagina.webContents.on('render-process-gone', () => estado('Página interrompida. Clique em Atualizar.', 'erro'));
   pagina.webContents.loadURL(HOME).catch(() => estado('Verifique a internet e a instalação do módulo na VPS.', 'erro'));
@@ -131,14 +142,22 @@ else {
     // Audio Lab e uma melhoria experimental do PHP instalada na VPS (WebDJ V1.3.1).
     // Aplica somente a navegacoes completas do estudio, nao interfere em
     // login, dashboard, recursos de audio, cookies ou WebSockets.
-    sessao.webRequest.onBeforeRequest({ urls: [`${ORIGIN}/webdj/*`] }, (detalhes, callback) => {
+    // O login do painel pode redirecionar primeiro a /dashboard.
+    // O Electron pula essa tela e carrega a Central WebDJ imediatamente.
+    // Nao afeta recursos, chamadas AJAX, formularios POST ou WebSockets.
+    sessao.webRequest.onBeforeRequest({ urls: [`${ORIGIN}/*`] }, (detalhes, callback) => {
       if (detalhes.resourceType !== 'mainFrame' || detalhes.method !== 'GET') {
         callback({});
         return;
       }
+      const principal = destinoPrincipal(detalhes.url);
+      const tipo = classificarDestino(detalhes.url);
+      if (principal || tipo === 'inicio' || tipo === 'negado') {
+        callback({ redirectURL: principal || HOME });
+        return;
+      }
       const novaUrl = prepararUrlAudioLab(detalhes.url);
-      if (novaUrl) callback({ redirectURL: novaUrl });
-      else callback({});
+      callback(novaUrl ? { redirectURL: novaUrl } : {});
     });
     const autorizaMicrofone = (url, tipo, detalhes = {}) => {
       if (tipo !== 'media' || !estaNoWebDJ(url)) return false;
@@ -159,10 +178,8 @@ else {
     ipcMain.handle('agc:acao', async (_ev, acao) => {
       if (!pagina || !janela) return false;
       if (acao === 'inicio') return navegar(HOME);
-      if (acao === 'painel') return navegar(PANEL);
-      if (acao === 'radio') return navegar(RADIO);
       if (acao === 'sair') return navegar(LOGOUT);
-      if (acao === 'voltar') { if (!confirmarSaidaEstudio()) return false; if (pagina.webContents.canGoBack()) { pagina.webContents.goBack(); return true; } return navegar(HOME, false); }
+      if (acao === 'voltar') return navegar(HOME);
       if (acao === 'atualizar') { pagina.webContents.reloadIgnoringCache(); return true; }
       return false;
     });

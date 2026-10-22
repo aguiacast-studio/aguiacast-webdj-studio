@@ -1,14 +1,14 @@
 {
   "name": "aguiacast-webdj-studio",
-  "version": "1.3.0",
-  "description": "Águia Cast WebDJ Studio Windows — ativação automática do Audio Lab no WebDJ",
+  "version": "1.4.0",
+  "description": "Águia Cast WebDJ Studio Windows — central exclusiva com Audio Lab e retorno seguro aos DJs",
   "author": "Águia Cast",
   "license": "UNLICENSED",
   "private": true,
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "check": "node --check src/main.js && node --check src/audio-lab-url.js && node --check src/preload.js && node --check src/ui/app.js && node tests/audio-lab-url.test.js",
+    "check": "node --check src/main.js && node --check src/audio-lab-url.js && node --check src/studio-routes.js && node tests/studio-routes.test.js && node --check src/preload.js && node --check src/ui/app.js && node tests/audio-lab-url.test.js",
     "dist:win": "electron-builder --win nsis --x64 --publish never"
   },
   "devDependencies": {

@@ -13,5 +13,5 @@ window.agc.escutar(({ texto, classe, webdj }) => {
   saida.textContent = texto;
   saida.title = texto;
   document.getElementById('indicador').className = 'indicator ' + (['ok','erro'].includes(classe) ? classe : '');
-  document.title = webdj ? 'No ar · Águia Cast WebDJ Studio' : 'Águia Cast WebDJ Studio';
+  document.title = webdj ? 'Estúdio aberto · Águia Cast WebDJ Studio' : 'Águia Cast WebDJ Studio';
 });
