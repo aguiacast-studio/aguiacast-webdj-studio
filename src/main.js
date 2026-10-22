@@ -1,5 +1,6 @@
 'use strict';
 const path = require('node:path');
+const { prepararUrlAudioLab } = require('./audio-lab-url');
 const { app, BrowserWindow, WebContentsView, ipcMain, session, dialog, powerSaveBlocker } = require('electron');
 
 const ORIGIN = 'https://aguiacast.com';
@@ -103,7 +104,11 @@ function iniciar() {
     if (/^\/login(?:\.php)?\/?$/i.test(endereco.pathname)) {
       estado('Faça login com a porta e a senha da streaming.', 'neutro');
     } else if (estaNoWebDJ(u)) {
-      estado('Estúdio WebDJ aberto · confirme a conexão antes de transmitir.', 'ok');
+      const labAtivo = endereco.searchParams.get('agc_audio_lab') === '1';
+      estado(labAtivo
+        ? 'Águia Audio Lab ativo · confirme a conexão antes de transmitir.'
+        : 'WebDJ clássico aberto · Audio Lab não identificado nesta página.',
+        labAtivo ? 'ok' : 'atencao');
     } else if (endereco.origin === ORIGIN) {
       estado('Área do painel Águia Cast aberta.', 'ok');
     } else {
@@ -123,6 +128,18 @@ else {
   });
   app.whenReady().then(() => {
     const sessao = session.fromPartition('persist:aguiacast-webdj');
+    // Audio Lab e uma melhoria experimental do PHP instalada na VPS (WebDJ V1.3.1).
+    // Aplica somente a navegacoes completas do estudio, nao interfere em
+    // login, dashboard, recursos de audio, cookies ou WebSockets.
+    sessao.webRequest.onBeforeRequest({ urls: [`${ORIGIN}/webdj/*`] }, (detalhes, callback) => {
+      if (detalhes.resourceType !== 'mainFrame' || detalhes.method !== 'GET') {
+        callback({});
+        return;
+      }
+      const novaUrl = prepararUrlAudioLab(detalhes.url);
+      if (novaUrl) callback({ redirectURL: novaUrl });
+      else callback({});
+    });
     const autorizaMicrofone = (url, tipo, detalhes = {}) => {
       if (tipo !== 'media' || !estaNoWebDJ(url)) return false;
       const tipos = detalhes.mediaTypes || [];
