@@ -5,7 +5,7 @@ const { app, BrowserWindow, WebContentsView, ipcMain, session, dialog, powerSave
 
 const ORIGIN = 'https://aguiacast.com';
 const HOME = `${ORIGIN}/webdj-studio`;
-const DJS = `${ORIGIN}/gerenciar-djs`;
+const DJS = `${ORIGIN}/studio-djs`;
 const LOGIN = `${ORIGIN}/login`;
 const LOGOUT = `${ORIGIN}/sair`;
 const TOP = 76;
@@ -138,7 +138,7 @@ function iniciar() {
         ? 'Motor de áudio V1.5 ativo · transmissão com mixagem aprimorada.'
         : 'WebDJ clássico aberto · Audio Lab não identificado nesta página.',
         labAtivo ? 'ok' : 'atencao');
-    } else if (endereco.pathname === '/gerenciar-djs' || endereco.pathname === '/gerenciar-djs.php') {
+    } else if (['/studio-djs', '/studio-djs.php', '/gerenciar-djs', '/gerenciar-djs.php'].includes(endereco.pathname)) {
       estado('Gerenciador de DJs conectado ao cadastro da VPS.', 'ok');
     } else if (endereco.origin === ORIGIN) {
       estado('Central de DJs pronta para abrir seu estúdio.', 'ok');

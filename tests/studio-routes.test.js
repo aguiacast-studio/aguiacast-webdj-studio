@@ -19,3 +19,6 @@ console.log('OK: verificadas rotas permitidas, recusadas e redirecionamento pos-
 
 assert.equal(classificarDestino('https://aguiacast.com/gerenciar-djs'), 'djs');
 assert.equal(classificarDestino('https://aguiacast.com/gerenciar-djs.php'), 'djs');
+
+assert.equal(classificarDestino('https://aguiacast.com/studio-djs'), 'djs');
+assert.equal(classificarDestino('https://aguiacast.com/studio-djs.php'), 'djs');
